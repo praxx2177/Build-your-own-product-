@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Mindful Mode Prototype</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Phosphor Icons (Sleek, Instagram-like icons) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Google Fonts for IG Logo -->
+    <link href="https://fonts.googleapis.com/css2?family=Grand+Hotel&display=swap" rel="stylesheet">
+    
+    <!-- React & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        /* System fonts to match Instagram */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #FAFAFA; color: #262626; }
+        .ig-logo { font-family: 'Grand Hotel', cursive; font-size: 32px; letter-spacing: 0.5px; }
+        
+        /* Utility classes */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Animations */
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- MOCK DATA ---
+        const MOCK_POSTS = [
+          { id: 1, type: 'post', category: 'friends', author: 'sarah_j', likes: '1,204', avatar: 'https://i.pravatar.cc/150?u=1', image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&h=600&fit=crop', caption: 'Brunch with the besties! 🥂' },
+          { id: 2, type: 'post', category: 'laughs', author: 'meme_god', likes: '45.2K', avatar: 'https://i.pravatar.cc/150?u=2', image: 'https://images.unsplash.com/photo-1541364983171-a8ba01e95cfc?w=600&h=600&fit=crop', caption: 'When the code finally compiles on Friday at 4:59 PM. 🐶' },
+          { id: 3, type: 'post', category: 'inspiration', author: 'design_daily', likes: '8,942', avatar: 'https://i.pravatar.cc/150?u=3', image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&h=600&fit=crop', caption: 'Minimalist workspace setup. Focus is everything.' },
+          { id: 4, type: 'post', category: 'news', author: 'tech_insider', likes: '12.1K', avatar: 'https://i.pravatar.cc/150?u=4', image: 'https://images.unsplash.com/photo-1504639725590-34d0984388bd?w=600&h=600&fit=crop', caption: 'Breaking: Major AI breakthrough announced today. Link in bio.' },
+        ];
+
+        const AD_CONTENT = { id: 'ad', type: 'ad', author: 'audio.technica', avatar: 'https://i.pravatar.cc/150?u=99', image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&h=600&fit=crop', caption: 'Elevate your audio experience. Shop our new noise-cancelling headphones today.' };
+
+        function App() {
+          const [activeView, setActiveView] = useState('home'); // home, settings
+          const [intent, setIntent] = useState(null); 
+          const [adComfort, setAdComfort] = useState('balanced'); 
+          const [showSessionWrap, setShowSessionWrap] = useState(false);
+          const [feed, setFeed] = useState([]);
+          
+          // Generate Feed logic based on intent and ad comfort
+          useEffect(() => {
+            let generatedFeed = [];
+            let basePosts = [...MOCK_POSTS];
+            // Simple shuffle
+            basePosts.sort(() => Math.random() - 0.5);
+            
+            // Filter by Intent (Solution 1)
+            if (intent) basePosts = basePosts.filter(p => p.category === intent);
+
+            let postCounter = 0;
+            // Generate a long scrolling feed (15 posts)
+            for (let i = 0; i < 15; i++) { 
+              const postIndex = i % basePosts.length;
+              let postToPush = { ...basePosts[postIndex], uniqueId: `post-${i}` };
+              
+              generatedFeed.push(postToPush);
+              postCounter++;
+
+              // Determine Ad Frequency based on Setting (Solution 2)
+              let adFrequency = 5; // Balanced
+              if (adComfort === 'fewer') adFrequency = 10;
+              if (adComfort === 'more') adFrequency = 3;
+
+              if (postCounter % adFrequency === 0) {
+                generatedFeed.push({ ...AD_CONTENT, uniqueId: `ad-${i}` });
+              }
+
+              // Inject the "Was this time well spent?" card every 6 posts (Solution 4)
+              if (postCounter % 6 === 0) {
+                 generatedFeed.push({ type: 'quality_check', uniqueId: `quality-${i}` });
+              }
+            }
+            setFeed(generatedFeed);
+          }, [intent, adComfort]);
+
+          // Calculate dynamic stats for the wrap-up card based on settings
+          const getAdStat = () => {
+              if (adComfort === 'fewer') return 2;
+              if (adComfort === 'more') return 6;
+              return 4;
+          };
+
+          return (
+            <div className="flex flex-col md:flex-row items-center justify-center min-h-screen p-4 gap-8">
+              
+              {/* --- DEMO CONTROL PANEL --- */}
+              {/* This panel sits outside the phone mockup to allow judges to trigger states */}
+              <div className="bg-white p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] w-full max-w-sm border border-gray-100 flex flex-col h-[812px] max-h-[812px]">
+                
+                <div className="mb-6">
+                    <h2 className="text-xl font-bold mb-1 flex items-center gap-2 text-gray-800">
+                    <i className="ph-fill ph-presentation-chart text-[#0095f6]"></i> 
+                    Presentation Panel
+                    </h2>
+                    <p className="text-xs text-gray-500">Trigger Mindful Mode features for the demo.</p>
+                </div>
+                
+                <div className="flex-1 space-y-6 overflow-y-auto no-scrollbar pb-4">
+                  
+                  {/* Pitch Point 1: Intent */}
+                  <div className="p-4 bg-[#FAFAFA] rounded-xl border border-gray-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-6 h-6 rounded-full bg-[#0095f6]/10 flex items-center justify-center text-[#0095f6] font-bold text-xs">1</div>
+                        <h3 className="font-bold text-sm">Session Intent</h3>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-3">Notice the top of the home feed. Clicking an intent instantly filters the algorithm for that session.</p>
+                      {intent && (
+                          <div className="text-xs text-[#0095f6] font-semibold bg-blue-50 p-2 rounded-lg text-center">
+                              Currently viewing: {intent.charAt(0).toUpperCase() + intent.slice(1)}
+                          </div>
+                      )}
+                  </div>
+
+                  {/* Pitch Point 2: Ad Slider */}
+                  <div className="p-4 bg-[#FAFAFA] rounded-xl border border-gray-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-6 h-6 rounded-full bg-[#0095f6]/10 flex items-center justify-center text-[#0095f6] font-bold text-xs">2</div>
+                        <h3 className="font-bold text-sm">Ad Volume Control</h3>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-3">Navigate to settings (Profile Icon > Settings) to change the ad load.</p>
+                      <div className="flex justify-between items-center text-xs font-semibold">
+                          <span className="text-gray-500">Current Load:</span>
+                          <span className="bg-gray-200 px-2 py-1 rounded text-black capitalize">{adComfort}</span>
+                      </div>
+                  </div>
+
+                  {/* Pitch Point 3: 25 Min Nudge */}
+                  <div className="p-4 bg-[#FAFAFA] rounded-xl border border-gray-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-6 h-6 rounded-full bg-[#0095f6]/10 flex items-center justify-center text-[#0095f6] font-bold text-xs">3</div>
+                        <h3 className="font-bold text-sm">The 25-Minute Nudge</h3>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-3">Click below to simulate a user hitting the 25-minute continuous scroll mark.</p>
+                      <button 
+                        onClick={() => setShowSessionWrap(true)}
+                        className="w-full bg-[#262626] hover:bg-black text-white font-semibold py-2.5 px-4 rounded-lg transition-all shadow-md flex justify-center items-center gap-2 text-sm"
+                      >
+                        <i className="ph-fill ph-clock"></i> Trigger Session Card
+                      </button>
+                  </div>
+
+                  {/* Pitch Point 4: Quality Signal */}
+                  <div className="p-4 bg-[#FAFAFA] rounded-xl border border-gray-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-6 h-6 rounded-full bg-[#0095f6]/10 flex items-center justify-center text-[#0095f6] font-bold text-xs">4</div>
+                        <h3 className="font-bold text-sm">Session Quality Signal</h3>
+                      </div>
+                      <p className="text-xs text-gray-500">Scroll down the home feed to see the "Was this time well spent?" card injected into the stream.</p>
+                  </div>
+
+                </div>
+                
+                {/* Retention Target Note */}
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                   <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg flex items-start gap-2">
+                     <i className="ph-fill ph-crown text-amber-500 text-lg"></i>
+                     <div>
+                       <p className="text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-0.5">Target Audience</p>
+                       <p className="text-xs text-amber-800 leading-tight">These features act as a retention strategy for 8+ year legacy users.</p>
+                     </div>
+                   </div>
+                </div>
+
+              </div>
+
+              {/* --- MOBILE APP MOCKUP FRAME --- */}
+              <div className="relative w-[375px] h-[812px] bg-white rounded-[45px] shadow-[0_0_50px_rgba(0,0,0,0.15)] overflow-hidden border-[12px] border-black flex flex-col">
+                
+                {/* --- HEADER --- */}
+                {activeView === 'home' && (
+                    <div className="pt-12 pb-2 px-4 flex justify-between items-center bg-white z-20">
+                      <h1 className="ig-logo mt-1">Instagram</h1>
+                      <div className="flex gap-5">
+                        <i className="ph ph-heart text-[26px]"></i>
+                        <i className="ph ph-messenger-logo text-[26px]"></i>
+                      </div>
+                    </div>
+                )}
+                
+                {activeView === 'settings' && (
+                    <div className="pt-12 pb-3 px-4 flex items-center justify-between border-b border-gray-200 bg-white z-20">
+                      <div className="flex items-center gap-4">
+                          <button onClick={() => setActiveView('home')}><i className="ph ph-arrow-left text-[24px]"></i></button>
+                          <h1 className="font-bold text-lg">Settings and activity</h1>
+                      </div>
+                    </div>
+                )}
+
+                {/* --- MAIN CONTENT AREA --- */}
+                <div className="flex-1 overflow-y-auto bg-white relative pb-0 no-scrollbar">
+                  
+                  {/* VIEW: HOME FEED */}
+                  {activeView === 'home' && (
+                    <div className="flex flex-col pb-16">
+                      
+                      {/* --- PITCH 1: SESSION INTENT BAR --- */}
+                      {/* This visually replaces Stories at the top of the feed to demand attention */}
+                      <div className="bg-[#FAFAFA] py-3 border-b border-gray-200 mb-1 sticky top-0 z-10 shadow-sm">
+                        <div className="px-4 mb-2 flex items-center justify-between">
+                            <p className="text-[13px] font-semibold text-gray-900 flex items-center gap-1.5">
+                              <i className="ph-fill ph-target text-[#0095f6]"></i>
+                              What are you here for today?
+                            </p>
+                        </div>
+                        <div className="flex gap-2.5 overflow-x-auto no-scrollbar px-4 pb-1">
+                          {['laughs', 'inspiration', 'friends', 'news'].map(cat => (
+                            <button 
+                              key={cat}
+                              onClick={() => setIntent(intent === cat ? null : cat)}
+                              className={`px-4 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
+                                intent === cat 
+                                  ? 'bg-[#262626] text-white shadow-md' 
+                                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                              }`}
+                            >
+                              {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Feed Posts Loop */}
+                      {feed.map((item) => {
+                        // AD BLOCK
+                        if (item.type === 'ad') {
+                          return (
+                            <div key={item.uniqueId} className="bg-white mb-2 pb-2">
+                              <div className="p-3 flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                  <img src={item.avatar} className="w-8 h-8 rounded-full border border-gray-200" alt="avatar" />
+                                  <div className="leading-tight">
+                                    <p className="text-sm font-semibold">{item.author}</p>
+                                    <p className="text-[11px] text-gray-500">Sponsored</p>
+                                  </div>
+                                </div>
+                                <i className="ph ph-dots-three text-2xl text-gray-500"></i>
+                              </div>
+                              <img src={item.image} alt="Ad content" className="w-full aspect-square object-cover" />
+                              <div className="px-4 py-3 bg-[#f5fbfd] flex justify-between items-center border-b border-gray-100 cursor-pointer">
+                                  <p className="text-sm font-semibold text-[#0095f6]">Learn more</p>
+                                  <i className="ph ph-caret-right text-[#0095f6]"></i>
+                              </div>
+                              <div className="px-3 pt-2 pb-1 flex justify-between items-center">
+                                <div className="flex gap-4">
+                                  <i className="ph ph-heart text-[26px]"></i>
+                                  <i className="ph ph-chat-circle text-[26px]"></i>
+                                  <i className="ph ph-paper-plane-tilt text-[26px]"></i>
+                                </div>
+                                <i className="ph ph-bookmark-simple text-[26px]"></i>
+                              </div>
+                              <div className="px-3 pb-3">
+                                <p className="text-sm"><span className="font-semibold">{item.author}</span> {item.caption} <span className="text-[#00376b]">#Ad</span></p>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // --- PITCH 4: QUALITY CHECK BLOCK ---
+                        if (item.type === 'quality_check') {
+                           return (
+                              <div key={item.uniqueId} className="bg-[#FAFAFA] my-4 mx-4 p-5 rounded-[20px] border border-gray-200 text-center shadow-sm">
+                                <div className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center mx-auto mb-3 shadow-sm">
+                                    <i className="ph-fill ph-brain text-xl text-[#0095f6]"></i>
+                                </div>
+                                <h3 className="text-base font-bold mb-1 text-gray-900">Mindful Check-in</h3>
+                                <p className="text-sm text-gray-500 mb-5 leading-tight">Was this time well spent? Your feedback trains the algorithm.</p>
+                                <div className="flex justify-center gap-3">
+                                  <button className="flex-1 flex flex-col items-center justify-center gap-1.5 bg-white border border-gray-200 py-3 rounded-xl hover:bg-gray-50 transition-colors">
+                                      <i className="ph ph-thumbs-down text-xl text-gray-600"></i>
+                                    <span className="text-[11px] text-gray-600 font-bold uppercase tracking-wide">Not Really</span>
+                                  </button>
+                                  <button className="flex-1 flex flex-col items-center justify-center gap-1.5 bg-blue-50 border border-blue-100 py-3 rounded-xl hover:bg-blue-100 transition-colors">
+                                      <i className="ph-fill ph-thumbs-up text-xl text-[#0095f6]"></i>
+                                    <span className="text-[11px] text-[#0095f6] font-bold uppercase tracking-wide">Yes, Good</span>
+                                  </button>
+                                </div>
+                              </div>
+                           )
+                        }
+
+                        // STANDARD POST BLOCK
+                        return (
+                          <div key={item.uniqueId} className="bg-white mb-2 pb-2">
+                            <div className="p-3 flex justify-between items-center">
+                              <div className="flex items-center gap-3">
+                                <div className="p-[2px] rounded-full bg-gradient-to-tr from-yellow-400 to-fuchsia-600">
+                                    <img src={item.avatar} className="w-8 h-8 rounded-full border-2 border-white" alt="avatar" />
+                                </div>
+                                <p className="text-sm font-semibold">{item.author}</p>
+                              </div>
+                              <i className="ph ph-dots-three text-2xl text-gray-500"></i>
+                            </div>
+                            <img src={item.image} alt="Post content" className="w-full aspect-square object-cover" />
+                            <div className="px-3 pt-2 pb-1 flex justify-between items-center">
+                              <div className="flex gap-4">
+                                <i className="ph ph-heart text-[26px]"></i>
+                                <i className="ph ph-chat-circle text-[26px]"></i>
+                                <i className="ph ph-paper-plane-tilt text-[26px]"></i>
+                              </div>
+                              <i className="ph ph-bookmark-simple text-[26px]"></i>
+                            </div>
+                            <div className="px-3 pb-3">
+                              <p className="text-sm font-semibold mb-1">{item.likes} likes</p>
+                              <p className="text-sm"><span className="font-semibold">{item.author}</span> {item.caption}</p>
+                              <p className="text-[10px] text-gray-500 mt-1.5 uppercase tracking-wider font-medium">2 hours ago</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* VIEW: SETTINGS */}
+                  {activeView === 'settings' && (
+                    <div className="p-4 bg-[#FAFAFA] min-h-full pb-16">
+                      
+                      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-6">
+                          <div className="bg-blue-50 px-4 py-3 border-b border-blue-100 flex items-center gap-2">
+                              <i className="ph-fill ph-shield-check text-[#0095f6] text-lg"></i>
+                              <h2 className="font-bold text-sm text-[#00376b]">Mindful Mode Settings</h2>
+                          </div>
+                          
+                          {/* --- PITCH 2: AD SLIDER --- */}
+                          <div className="p-4">
+                            <h3 className="font-bold text-base mb-1">Ad Comfort Level</h3>
+                            <p className="text-xs text-gray-500 mb-4 leading-relaxed">Choose your preferred feed density. We charge advertisers premium rates for fewer slots to maintain your experience.</p>
+                            
+                            <div className="flex bg-[#EFEFEF] rounded-xl p-1 relative z-10">
+                               {['fewer', 'balanced', 'more'].map(level => (
+                                 <button 
+                                   key={level} onClick={() => setAdComfort(level)}
+                                   className={`flex-1 py-2.5 text-sm font-bold rounded-lg capitalize transition-all ${adComfort === level ? 'bg-white shadow-sm text-black' : 'text-gray-500'}`}
+                                 >
+                                   {level}
+                                 </button>
+                               ))}
+                            </div>
+                            
+                            <div className="mt-4 bg-gray-50 rounded-lg p-3 border border-gray-100">
+                                <div className="flex items-start gap-2">
+                                    <i className="ph-fill ph-info text-gray-400 mt-0.5"></i>
+                                    <div>
+                                        <p className="text-[11px] font-semibold text-gray-700">Mid-Video Interruptions: <span className="text-green-600">Disabled</span></p>
+                                        <p className="text-[11px] text-gray-500 mt-0.5">Ads will only show between content, never during.</p>
+                                    </div>
+                                </div>
+                            </div>
+                          </div>
+                      </div>
+
+                      <div className="bg-white rounded-2xl border border-gray-200 p-4">
+                          <h3 className="font-bold text-base mb-1">Session Management</h3>
+                          <p className="text-xs text-gray-500 mb-4">You have active Session Nudges enabled. We will gently remind you of your time spent every 25 minutes.</p>
+                          <div className="flex justify-between items-center py-2">
+                              <span className="text-sm font-semibold">25-Minute Nudge</span>
+                              <div className="w-12 h-7 bg-[#0095f6] rounded-full relative shadow-inner">
+                                  <div className="w-6 h-6 bg-white rounded-full absolute top-[2px] left-[22px] shadow-sm"></div>
+                              </div>
+                          </div>
+                      </div>
+
+                    </div>
+                  )}
+
+                </div>
+
+                {/* --- BOTTOM NAVIGATION --- */}
+                <div className="absolute bottom-0 w-full bg-white border-t border-gray-200 px-6 pt-3 pb-6 flex justify-between items-center z-30 text-[28px]">
+                   <button onClick={() => setActiveView('home')} className="transition-transform active:scale-90">
+                       <i className={activeView === 'home' ? 'ph-fill ph-house text-black' : 'ph ph-house text-gray-800'} ></i>
+                   </button>
+                   <button className="transition-transform active:scale-90"><i className="ph ph-magnifying-glass text-gray-800" ></i></button>
+                   <button className="transition-transform active:scale-90"><i className="ph ph-plus-square text-gray-800" ></i></button>
+                   <button className="transition-transform active:scale-90"><i className="ph ph-video-camera text-gray-800" ></i></button>
+                   <button onClick={() => setActiveView('settings')} className={`w-7 h-7 rounded-full overflow-hidden transition-transform active:scale-90 ${activeView === 'settings' ? 'border-[1.5px] border-black p-[1px]' : ''}`}>
+                        <img src="https://i.pravatar.cc/150?u=me" className="w-full h-full rounded-full object-cover" />
+                   </button>
+                </div>
+
+                {/* --- PITCH 3: 25-MINUTE SESSION WRAP OVERLAY --- */}
+                {showSessionWrap && (
+                  <div className="absolute inset-0 bg-black/50 z-50 flex items-end justify-center backdrop-blur-sm animate-fade-in">
+                    
+                    {/* Bottom Sheet Card */}
+                    <div className="bg-white rounded-t-3xl p-6 w-full shadow-2xl pb-10 animate-slide-up">
+                      <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-6"></div>
+                      
+                      <div className="flex items-center gap-4 mb-5">
+                          <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100 shrink-0">
+                            <i className="ph-fill ph-hourglass-high text-2xl text-[#0095f6]"></i>
+                          </div>
+                          <div>
+                              <h2 className="text-xl font-bold text-gray-900 leading-tight">Time Check</h2>
+                              <p className="text-sm text-gray-500">You've been scrolling for 25 minutes.</p>
+                          </div>
+                      </div>
+                      
+                      <div className="bg-[#FAFAFA] border border-gray-100 rounded-2xl p-4 mb-6 grid grid-cols-2 gap-4 text-center">
+                        <div className="border-r border-gray-200">
+                          <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-1">Content Viewed</p>
+                          <p className="text-2xl font-bold text-gray-900">18 <span className="text-sm text-gray-400 font-medium">posts</span></p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-1">Ads Served</p>
+                          <p className="text-2xl font-bold text-gray-900">{getAdStat()} <span className="text-sm text-gray-400 font-medium">ads</span></p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2.5">
+                        <button onClick={() => { setShowSessionWrap(false); setTimeSpentSeconds(0); }} className="w-full py-3.5 bg-[#0095f6] text-white rounded-xl font-bold hover:bg-blue-600 transition-colors shadow-sm">
+                          Close Instagram
+                        </button>
+                        <button onClick={() => setShowSessionWrap(false)} className="w-full py-3.5 text-gray-900 font-bold hover:bg-gray-50 rounded-xl transition-colors border border-gray-200">
+                          Keep scrolling
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+              </div>
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
